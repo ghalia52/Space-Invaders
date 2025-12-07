@@ -74,6 +74,11 @@ src/
 ├── ui/                # User interface components
 └── utils/             # Utilities (Logger, Constants, Strings)
 ```
+## 📐 UML Class Diagram
+
+Below is the complete UML class diagram showing all design patterns and their relationships:
+
+![Space Invaders UML Diagram](UML-Diag.png)
 
 ## 🚀 Getting Started
 
