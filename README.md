@@ -1,6 +1,6 @@
 # 🚀 Space Invaders - Design Patterns Project
 
-A Java implementation of the classic Space Invaders game demonstrating five software design patterns.
+A Java implementation of the classic Space Invaders game demonstrating four essential software design patterns.
 
 ## 📋 Overview
 
@@ -51,21 +51,12 @@ Creates different projectile types.
 - Power shots for enhanced damage
 - Alien bombs for enemy attacks
 
-### 5. Movement Pattern
-Handles player movement using strategy-like approach.
-
-**Classes:** `Move`, `MoveLeft`, `MoveRight`, `MoveDown`, `MovementProvider`
-
-- Encapsulated movement logic
-- Easy to extend with new movement types
-
 ## 📁 Project Structure
 
 ```
 src/
 ├── entities/          # Game entities (Player, Alien, Projectiles)
 ├── game/              # Core game logic (Board)
-├── movement/          # Movement strategies
 ├── patterns/
 │   ├── composite/     # Composite pattern classes
 │   ├── decorator/     # Decorator pattern classes
@@ -74,11 +65,24 @@ src/
 ├── ui/                # User interface components
 └── utils/             # Utilities (Logger, Constants, Strings)
 ```
+
 ## 📐 UML Class Diagram
 
 Below is the complete UML class diagram showing all design patterns and their relationships:
 
 ![Space Invaders UML Diagram](UML-Diag.png)
+
+### Diagram Legend
+- **Solid lines** → Inheritance
+- **Dotted lines** → Interface implementation
+- **Diamonds** → Composition
+- **Arrows** → Dependencies
+
+The diagram illustrates:
+- **State Pattern** managing game flow (Menu → Playing → Won/Lost)
+- **Decorator Pattern** for dynamic ship power-ups
+- **Composite Pattern** for hierarchical game object structure
+- **Factory Pattern** for projectile creation
 
 ## 🚀 Getting Started
 
@@ -96,7 +100,7 @@ Below is the complete UML class diagram showing all design patterns and their re
 
 2. Open the project in your IDE
 
-3. Run `Main.java` from the utils package
+3. Run `Main.java` from the default package
 
 ## 🎮 Gameplay
 
@@ -150,10 +154,44 @@ The game logs important events to `game.log`:
 - Factory creations
 - Game events
 
+## 🎯 Design Pattern Highlights
+
+### State Pattern in Action
+```java
+board.setCurrentState(new StateGame(board));  // Menu → Playing
+board.setCurrentState(new StateWon(board, score));  // Playing → Won
+```
+
+### Decorator Pattern in Action
+```java
+playerShip = new BasicShip(player);
+playerShip = new SpeedBoostDecorator(playerShip);  // Add speed boost
+playerShip = new ShieldDecorator(playerShip);      // Add shield
+```
+
+### Composite Pattern in Action
+```java
+AlienFormation formation = AlienFormation.createRectangularFormation(
+    "MainFormation", 5, 11, 150, 50, 40
+);
+gameScene.getEnemyGroup().add(formation);  // Add to hierarchy
+```
+
+### Factory Pattern in Action
+```java
+Projectile projectile = projectileFactory.makeProjectile(
+    Constants.NORMAL_PROJECTILE_ID, playerX, playerY
+);
+```
+
 ## 👥 Authors
 
- **Ghalia Benaissa** & **Ghada Mhadhbi** 
+**Ghalia Benaissa** & **Ghada Mhadhbi**
 
+## 📄 License
 
+This project is developed for academic purposes as part of the Design Patterns course.
+
+---
 
 *Developed with ☕ for Design Patterns Course 2025-2026*
