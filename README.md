@@ -70,7 +70,7 @@ src/
 
 Below is the complete UML class diagram showing all design patterns and their relationships:
 
-![Space Invaders UML Diagram](UML-Diag.png)
+![Space Invaders UML Diagram](Uml-Diag (2).png)
 
 ### Diagram Legend
 - **Solid lines** → Inheritance
