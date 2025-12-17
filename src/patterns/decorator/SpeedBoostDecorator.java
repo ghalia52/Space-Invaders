@@ -1,15 +1,15 @@
 package patterns.decorator;
 
 import utils.Logger;
+import utils.Constants;
 import java.awt.Graphics;
 import java.awt.Color;
-
 
 public class SpeedBoostDecorator extends ShipDecorator {
     private int speedMultiplier = 2;
 
     public SpeedBoostDecorator(Ship ship) {
-        super(ship, 5000); // 5 secondes
+        super(ship, Constants.SPEED_BOOST_DURATION);
         Logger.log("DECORATOR", "SpeedBoost applied - Speed x" + speedMultiplier);
     }
 
@@ -17,7 +17,6 @@ public class SpeedBoostDecorator extends ShipDecorator {
     public void render(Graphics g) {
         decoratedShip.render(g);
         
-        // Effet visuel : traînée de vitesse
         if (!isExpired()) {
             g.setColor(new Color(255, 255, 0, 100));
             int x = getX();
@@ -52,6 +51,9 @@ public class SpeedBoostDecorator extends ShipDecorator {
 
     @Override
     public String getStatus() {
+        if (isExpired()) {
+            return decoratedShip.getStatus();
+        }
         return decoratedShip.getStatus() + " + SpeedBoost";
     }
 }

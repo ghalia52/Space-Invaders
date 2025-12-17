@@ -15,9 +15,11 @@ import utils.Constants;
 import utils.Logger;
 
 /**
- * État du jeu en cours - Implémentation du State Pattern
- * Gère la logique du jeu Space Invaders avec intégration des patterns obligatoires
- * FIXED: Properly stops game loop when transitioning to Won/Lost states
+ * Game State - Complete implementation with all 4 design patterns
+ * DECORATOR: Power-ups applied automatically based on score
+ * STATE: Manages Menu -> Playing -> Won/Lost transitions
+ * COMPOSITE: Manages game object hierarchy via GameScene
+ * FACTORY: Creates projectiles via ProjectileFactory
  */
 public class StateGame implements State {
 
@@ -31,15 +33,14 @@ public class StateGame implements State {
     private ArrayList<Projectile> projectiles;
     private int score;
     private boolean isPaused;
+    private int lastPowerUpScore = 0;
     
-    // Position et vitesse du joueur
     private int playerX;
     private int playerY;
     private int playerSpeed;
     
-    // Contrôle de la cadence de tir
     private long lastShotTime;
-    private static final long SHOT_COOLDOWN = 300; // ms entre chaque tir
+    private long shotCooldown;
 
     public StateGame(Board board) {
         this.board = board;
@@ -50,88 +51,114 @@ public class StateGame implements State {
         this.isPaused = false;
         this.playerX = 400;
         this.playerY = 550;
-        this.playerSpeed = 8;
         this.lastShotTime = 0;
         
         Logger.state("StateGame instantiated");
         setup();
     }
 
-    /**
-     * Configuration initiale du jeu
-     * Initialise tous les composants nécessaires
-     */
     private void setup() {
-        Logger.info("Setting up game...");
+        Logger.info("Setting up game with all design patterns...");
         
-        // Création du panneau de jeu
         gamePanel = new GamePanel();
         
-        // Application du Decorator Pattern - Vaisseau de base
         playerShip = new BasicShip(player);
-        Logger.decorator("BasicShip decorator applied to Player");
+        updatePlayerStats();
+        Logger.decorator("BasicShip created - Base stats initialized");
         
-        // Création de la scène de jeu (Composite Pattern)
         gameScene = new GameScene();
         Logger.composite("GameScene created (root composite)");
         
-        // Création de la formation d'aliens
         createAlienFormation();
         
-        Logger.info("Game setup complete - Ready to play!");
+        Logger.info("Game setup complete - All 4 patterns active!");
     }
     
-    /**
-     * Création de la formation d'aliens utilisant le Composite Pattern
-     * Les aliens sont organisés en formation rectangulaire
-     */
     private void createAlienFormation() {
         Logger.composite("Creating alien formation...");
         
         alienFormation = AlienFormation.createRectangularFormation(
-            "MainFormation",
-            5,      // rows
-            11,     // columns
-            150,    // startX
-            50,     // startY
-            40      // spacing
+            "MainFormation", 5, 11, 150, 50, 40
         );
         
         alienFormation.setSpeed(1);
         gameScene.getEnemyGroup().add(alienFormation);
         
-        Logger.composite("AlienFormation added to GameScene (composite structure)");
-        Logger.info("Alien formation created: 5 rows x 11 columns = 55 aliens");
+        Logger.composite("AlienFormation (5x11=55 aliens) added to GameScene");
     }
     
-    /**
-     * Tir d'un projectile par le joueur
-     * Utilise la Factory Pattern pour créer les projectiles
-     */
+    private void checkAndApplyPowerUps() {
+        if (score >= lastPowerUpScore + 50 && score > 0) {
+            lastPowerUpScore = score;
+            applyRandomPowerUp();
+        }
+    }
+    
+    private void applyRandomPowerUp() {
+        int random = (int)(Math.random() * 4);
+        
+        switch(random) {
+            case 0:
+                playerShip = new SpeedBoostDecorator(playerShip);
+                Logger.decorator("SpeedBoost applied! Ship speed increased x2");
+                break;
+            case 1:
+                playerShip = new TripleShotDecorator(playerShip);
+                Logger.decorator("TripleShot applied! Fire power = 3");
+                break;
+            case 2:
+                playerShip = new RapidFireDecorator(playerShip);
+                Logger.decorator("RapidFire applied! Fire rate x2");
+                break;
+            case 3:
+                playerShip = new ShieldDecorator(playerShip);
+                Logger.decorator("Shield applied! Protection active");
+                break;
+        }
+        
+        updatePlayerStats();
+    }
+    
+    private void updatePlayerStats() {
+        playerSpeed = playerShip.getSpeed();
+        shotCooldown = playerShip.getFireRate();
+    }
+    
     private void fireProjectile() {
         long currentTime = System.currentTimeMillis();
         
-        // Vérifier le cooldown
-        if (currentTime - lastShotTime < SHOT_COOLDOWN) {
+        if (currentTime - lastShotTime < shotCooldown) {
             return;
         }
         
-        // Factory Pattern - Création du projectile
-        Projectile p = projectileFactory.makeProjectile(
-            Constants.NORMAL_PROJECTILE_ID,
-            playerX,
-            playerY - 20
-        );
-        projectiles.add(p);
-        lastShotTime = currentTime;
+        int firePower = playerShip.getFirePower();
         
-        Logger.info("Projectile fired from position (" + playerX + ", " + playerY + ")");
+        if (firePower == 1) {
+            Projectile p = projectileFactory.makeProjectile(
+                Constants.NORMAL_PROJECTILE_ID, playerX, playerY - 20
+            );
+            projectiles.add(p);
+            Logger.info("FACTORY: Normal shot created");
+            
+        } else if (firePower >= 3) {
+            Projectile left = projectileFactory.makeProjectile(
+                Constants.NORMAL_PROJECTILE_ID, playerX - 15, playerY - 20
+            );
+            Projectile center = projectileFactory.makeProjectile(
+                Constants.NORMAL_PROJECTILE_ID, playerX, playerY - 20
+            );
+            Projectile right = projectileFactory.makeProjectile(
+                Constants.NORMAL_PROJECTILE_ID, playerX + 15, playerY - 20
+            );
+            projectiles.add(left);
+            projectiles.add(center);
+            projectiles.add(right);
+            Logger.info("FACTORY: Triple shot created (3 projectiles)");
+        }
+        
+        lastShotTime = currentTime;
     }
     
-    /**
-     * Mise à jour des projectiles
-     * Gère le déplacement et la suppression des projectiles hors écran
-     */
     private void updateProjectiles() {
         Iterator<Projectile> it = projectiles.iterator();
         
@@ -143,10 +170,8 @@ public class StateGame implements State {
                 continue;
             }
             
-            // Déplacement vers le haut
             projectile.setYCoord(projectile.getYCoord() - 15);
             
-            // Suppression si hors écran
             if (projectile.getYCoord() < 0) {
                 projectile.setDraw(false);
                 it.remove();
@@ -154,12 +179,7 @@ public class StateGame implements State {
         }
     }
     
-    /**
-     * Détection et gestion des collisions
-     * Vérifie les collisions projectiles-aliens et aliens-joueur
-     */
     private void checkCollisions() {
-        // Collision projectiles avec aliens (Composite Pattern traversal)
         for (Projectile projectile : projectiles) {
             if (!projectile.draw()) continue;
             
@@ -176,10 +196,12 @@ public class StateGame implements State {
                                 alien.hit();
                                 score += 10;
                                 
-                                Logger.info("Collision detected! Alien destroyed. Score: " + score);
+                                Logger.info("Hit! Alien destroyed - Score: " + score);
                                 
-                                // Vérifier la victoire
-                                if (formation.countActiveComponents() == 0) {
+                                int remainingAliens = formation.countActiveComponents();
+                                Logger.composite("Remaining aliens: " + remainingAliens);
+                                
+                                if (remainingAliens == 0) {
                                     gameWon();
                                     return;
                                 }
@@ -190,13 +212,10 @@ public class StateGame implements State {
             }
         }
         
-        // Vérifier si les aliens ont atteint le joueur (Game Over)
+        checkAndApplyPowerUps();
         checkAlienReachedPlayer();
     }
     
-    /**
-     * Vérifie la collision entre un projectile et un alien
-     */
     private boolean checkProjectileAlienCollision(Projectile projectile, AlienObject alien) {
         int px = projectile.getXCoord();
         int py = projectile.getYCoord();
@@ -206,9 +225,6 @@ public class StateGame implements State {
         return px > ax - 15 && px < ax + 15 && py > ay - 10 && py < ay + 10;
     }
     
-    /**
-     * Vérifie si un alien a atteint la position du joueur
-     */
     private void checkAlienReachedPlayer() {
         for (GameComponent component : gameScene.getEnemyGroup().getChildren()) {
             if (component instanceof AlienFormation) {
@@ -217,7 +233,7 @@ public class StateGame implements State {
                     if (alienComp instanceof AlienObject && alienComp.isActive()) {
                         AlienObject alien = (AlienObject) alienComp;
                         if (alien.getY() > 500) {
-                            Logger.info("Alien reached player position - Game Over!");
+                            Logger.info("Alien reached player - Game Over!");
                             gameOver();
                             return;
                         }
@@ -227,39 +243,27 @@ public class StateGame implements State {
         }
     }
     
-    /**
-     * Victoire - Transition vers StateWon (State Pattern)
-     * FIXED: Now properly stops the game loop
-     */
     public void gameWon() {
-        Logger.state("PLAYING -> WON");
-        Logger.info("Victory! Final score: " + score);
+        Logger.state("STATE TRANSITION: PLAYING -> WON");
+        Logger.info("VICTORY! Final score: " + score);
         
-        // CRITICAL FIX: Stop the game loop BEFORE transitioning
         if (gamePanel != null && gamePanel.updateTimer != null) {
             gamePanel.updateTimer.stop();
-            Logger.info("Game loop stopped for state transition");
+            Logger.info("Game loop stopped");
         }
         
-        // Now transition to Won state
         board.setCurrentState(new StateWon(board, score));
     }
     
-    /**
-     * Défaite - Transition vers StateLost (State Pattern)
-     * FIXED: Now properly stops the game loop
-     */
     public void gameOver() {
-        Logger.state("PLAYING -> GAME_OVER");
-        Logger.info("Game Over! Final score: " + score);
+        Logger.state("STATE TRANSITION: PLAYING -> LOST");
+        Logger.info("GAME OVER! Final score: " + score);
         
-        // CRITICAL FIX: Stop the game loop BEFORE transitioning
         if (gamePanel != null && gamePanel.updateTimer != null) {
             gamePanel.updateTimer.stop();
-            Logger.info("Game loop stopped for state transition");
+            Logger.info("Game loop stopped");
         }
         
-        // Now transition to Lost state
         board.setCurrentState(new StateLost(board, score));
     }
 
@@ -271,14 +275,17 @@ public class StateGame implements State {
     @Override
     public void onEnter() {
         State.super.onEnter();
-        Logger.state("Entering PLAYING state");
-        Logger.info("Game started - Controls: ← → to move, SPACE to shoot, ESC to pause");
+        Logger.state("STATE: Entering PLAYING state");
+        Logger.info("Controls: LEFT/RIGHT (or A D) = Move | SPACE = Shoot | ESC = Pause");
+        Logger.info("All 4 Design Patterns Active:");
+        Logger.info("   STATE: Managing game flow");
+        Logger.info("   DECORATOR: Power-ups every 50 points");
+        Logger.info("   COMPOSITE: 55 aliens in formation");
+        Logger.info("   FACTORY: Creating projectiles");
         
-        // Demander le focus au panneau
         SwingUtilities.invokeLater(() -> {
             if (gamePanel != null) {
                 gamePanel.requestFocusInWindow();
-                Logger.info("Focus requested for game panel");
             }
         });
     }
@@ -286,23 +293,16 @@ public class StateGame implements State {
     @Override
     public void onExit() {
         State.super.onExit();
-        Logger.state("Exiting PLAYING state");
+        Logger.state("STATE: Exiting PLAYING state");
         
-        // CRITICAL: Ensure timer is stopped when exiting
         if (gamePanel != null && gamePanel.updateTimer != null) {
             gamePanel.updateTimer.stop();
-            Logger.info("Game loop stopped on exit");
         }
     }
 
-    /**
-     * Panneau de jeu principal
-     * Gère l'affichage et les interactions utilisateur
-     * FIXED: Timer is now accessible for proper cleanup
-     */
     class GamePanel extends JPanel {
         
-        Timer updateTimer; // CHANGED: Made package-private for access from outer class
+        Timer updateTimer;
         
         public GamePanel() {
             initializePanel();
@@ -311,9 +311,6 @@ public class StateGame implements State {
             startGameLoop();
         }
         
-        /**
-         * Initialisation du panneau
-         */
         private void initializePanel() {
             setPreferredSize(Constants.SCREEN_SIZE);
             setBackground(Color.BLACK);
@@ -323,14 +320,10 @@ public class StateGame implements State {
                 @Override
                 public void componentShown(ComponentEvent e) {
                     requestFocusInWindow();
-                    Logger.info("GamePanel displayed - Focus acquired");
                 }
             });
         }
         
-        /**
-         * Configuration du listener clavier
-         */
         private void setupKeyListener() {
             addKeyListener(new KeyAdapter() {
                 @Override
@@ -340,9 +333,6 @@ public class StateGame implements State {
             });
         }
         
-        /**
-         * Gestion des touches du clavier
-         */
         private void handleKeyPress(int keyCode) {
             switch(keyCode) {
                 case KeyEvent.VK_LEFT:
@@ -375,9 +365,6 @@ public class StateGame implements State {
             repaint();
         }
         
-        /**
-         * Configuration du listener souris pour récupérer le focus
-         */
         private void setupMouseListener() {
             addMouseListener(new MouseAdapter() {
                 @Override
@@ -387,9 +374,6 @@ public class StateGame implements State {
             });
         }
         
-        /**
-         * Démarrage de la boucle de jeu
-         */
         private void startGameLoop() {
             updateTimer = new Timer(16, new ActionListener() {
                 @Override
@@ -398,12 +382,14 @@ public class StateGame implements State {
                         gameScene.update();
                         updateProjectiles();
                         checkCollisions();
+                        playerShip.update();
+                        updatePlayerStats();
                         repaint();
                     }
                 }
             });
             updateTimer.start();
-            Logger.info("Game loop started (60 FPS target)");
+            Logger.info("Game loop started at 60 FPS");
         }
         
         @Override
@@ -422,11 +408,7 @@ public class StateGame implements State {
             }
         }
         
-        /**
-         * Dessine le fond du jeu avec gradient et étoiles
-         */
         private void drawBackground(Graphics2D g2d) {
-            // Gradient de fond
             GradientPaint gradient = new GradientPaint(
                 0, 0, new Color(5, 10, 25),
                 0, getHeight(), new Color(15, 25, 50)
@@ -434,7 +416,6 @@ public class StateGame implements State {
             g2d.setPaint(gradient);
             g2d.fillRect(0, 0, getWidth(), getHeight());
             
-            // Étoiles d'arrière-plan
             g2d.setColor(new Color(255, 255, 255, 150));
             java.util.Random starRandom = new java.util.Random(42);
             for (int i = 0; i < 50; i++) {
@@ -444,16 +425,11 @@ public class StateGame implements State {
             }
         }
         
-        /**
-         * Dessine les éléments du jeu (aliens et projectiles)
-         */
         private void drawGameElements(Graphics2D g2d) {
-            // Dessiner les aliens (Composite Pattern)
             if (gameScene != null) {
                 gameScene.render(g2d);
             }
             
-            // Dessiner les projectiles
             for (Projectile projectile : projectiles) {
                 if (projectile.draw()) {
                     drawProjectile(g2d, projectile);
@@ -461,82 +437,77 @@ public class StateGame implements State {
             }
         }
         
-        /**
-         * Dessine un projectile avec effet de lueur
-         */
         private void drawProjectile(Graphics2D g2d, Projectile projectile) {
             int px = projectile.getXCoord();
             int py = projectile.getYCoord();
             
-            // Lueur externe
             g2d.setColor(new Color(255, 255, 200, 100));
             g2d.fillRect(px - 5, py - 14, 10, 28);
             
-            // Corps du projectile
             g2d.setColor(new Color(255, 255, 100));
             g2d.fillRect(px - 3, py - 12, 6, 24);
         }
         
-        /**
-         * Dessine le vaisseau du joueur
-         */
         private void drawPlayerShip(Graphics2D g2d) {
-            // Corps principal - Triangle cyan
             g2d.setColor(new Color(0, 255, 255));
             int[] xPoints = {playerX, playerX - 30, playerX + 30};
             int[] yPoints = {playerY - 25, playerY + 20, playerY + 20};
             g2d.fillPolygon(xPoints, yPoints, 3);
             
-            // Contour blanc
             g2d.setColor(Color.WHITE);
             g2d.setStroke(new BasicStroke(2));
             g2d.drawPolygon(xPoints, yPoints, 3);
             
-            // Cockpit jaune
             g2d.setColor(new Color(255, 255, 100));
             g2d.fillOval(playerX - 8, playerY - 5, 16, 16);
             
-            // Reflet du cockpit
             g2d.setColor(new Color(255, 255, 255, 180));
             g2d.fillOval(playerX - 5, playerY - 2, 6, 6);
             
-            // Lueur des moteurs
             g2d.setColor(new Color(255, 100, 0, 100));
             g2d.fillOval(playerX - 20, playerY + 15, 10, 10);
             g2d.fillOval(playerX + 10, playerY + 15, 10, 10);
+            
+            if (playerShip.hasShield()) {
+                g2d.setColor(new Color(0, 150, 255, 100));
+                g2d.fillOval(playerX - 35, playerY - 30, 70, 70);
+                g2d.setColor(new Color(0, 200, 255));
+                g2d.setStroke(new BasicStroke(3));
+                g2d.drawOval(playerX - 35, playerY - 30, 70, 70);
+            }
         }
         
-        /**
-         * Dessine l'interface utilisateur (HUD)
-         */
         private void drawUI(Graphics2D g2d) {
-            // Score
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Monospaced", Font.BOLD, 28));
             g2d.drawString("SCORE: " + score, 20, 45);
             
-            // Nombre d'aliens restants
             int aliensRemaining = alienFormation.countActiveComponents();
             g2d.drawString("ALIENS: " + aliensRemaining, 20, 80);
             
-            // Instructions
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
+            g2d.setColor(new Color(255, 215, 0));
+            String status = playerShip.getStatus();
+            if (!status.equals("BasicShip")) {
+                g2d.drawString("POWER-UP: " + status, 20, 115);
+            }
+            
+            int nextPowerUp = lastPowerUpScore + 50;
+            g2d.setColor(new Color(150, 255, 150));
+            g2d.drawString("Next Power-Up: " + nextPowerUp, 20, 140);
+            
             g2d.setFont(new Font("Arial", Font.PLAIN, 14));
             g2d.setColor(new Color(255, 255, 150, 200));
-            String controls = "← → or A D: Move  |  SPACE: Shoot  |  ESC: Pause";
+            String controls = "LEFT/RIGHT or A D: Move  |  SPACE: Shoot  |  ESC: Pause  |  Power-ups every 50 pts!";
             FontMetrics fm = g2d.getFontMetrics();
             int controlsWidth = fm.stringWidth(controls);
             g2d.drawString(controls, (getWidth() - controlsWidth) / 2, getHeight() - 15);
         }
         
-        /**
-         * Dessine l'overlay de pause
-         */
         private void drawPauseOverlay(Graphics2D g2d) {
-            // Fond semi-transparent
             g2d.setColor(new Color(0, 0, 0, 180));
             g2d.fillRect(0, 0, getWidth(), getHeight());
             
-            // Texte "PAUSED"
             g2d.setColor(new Color(255, 255, 100));
             g2d.setFont(new Font("Arial", Font.BOLD, 72));
             String pauseText = "PAUSED";
@@ -544,7 +515,6 @@ public class StateGame implements State {
             int textWidth = fm.stringWidth(pauseText);
             g2d.drawString(pauseText, (getWidth() - textWidth) / 2, getHeight() / 2 - 20);
             
-            // Instructions
             g2d.setFont(new Font("Arial", Font.PLAIN, 24));
             g2d.setColor(Color.WHITE);
             String resumeText = "Press ESC to Resume";

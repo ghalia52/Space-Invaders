@@ -1,14 +1,14 @@
 package patterns.decorator;
 
 import utils.Logger;
+import utils.Constants;
 import java.awt.Graphics;
 import java.awt.Color;
-
 
 public class TripleShotDecorator extends ShipDecorator {
     
     public TripleShotDecorator(Ship ship) {
-        super(ship, 8000); // 8 secondes
+        super(ship, Constants.TRIPLE_SHOT_DURATION);
         Logger.log("DECORATOR", "TripleShot applied");
     }
 
@@ -16,12 +16,10 @@ public class TripleShotDecorator extends ShipDecorator {
     public void render(Graphics g) {
         decoratedShip.render(g);
         
-        // Indicateur visuel de triple shot
         if (!isExpired()) {
             g.setColor(Color.RED);
             int x = getX();
             int y = getY();
-            // Trois petites lignes au-dessus du vaisseau
             g.fillRect(x - 10, y - 15, 2, 5);
             g.fillRect(x, y - 15, 2, 5);
             g.fillRect(x + 10, y - 15, 2, 5);
@@ -43,7 +41,7 @@ public class TripleShotDecorator extends ShipDecorator {
         if (isExpired()) {
             return decoratedShip.getFirePower();
         }
-        return 3; // Triple shot
+        return 3;
     }
 
     @Override
@@ -53,6 +51,9 @@ public class TripleShotDecorator extends ShipDecorator {
 
     @Override
     public String getStatus() {
+        if (isExpired()) {
+            return decoratedShip.getStatus();
+        }
         return decoratedShip.getStatus() + " + TripleShot";
     }
 }

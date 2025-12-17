@@ -1,18 +1,26 @@
 package patterns.decorator;
 
 import entities.Player;
+import utils.Constants;
 import utils.Logger;
 import java.awt.Graphics;
 
+/**
+ * DECORATOR PATTERN - Component concret
+ * Vaisseau de base qui wrappe le Player
+ */
 public class BasicShip implements Ship {
     private Player player;
-    private int baseSpeed = 2;
-    private int baseFireRate = 300; // ms entre les tirs
-    private int baseFirePower = 1;
+    private int baseSpeed;
+    private int baseFireRate;
+    private int baseFirePower;
 
     public BasicShip(Player player) {
         this.player = player;
-        Logger.log("INFO", "BasicShip created");
+        this.baseSpeed = Constants.BASE_PLAYER_SPEED;
+        this.baseFireRate = Constants.BASE_FIRE_RATE;
+        this.baseFirePower = Constants.BASE_FIRE_POWER;
+        Logger.log("DECORATOR", "BasicShip created - Speed:" + baseSpeed + " FireRate:" + baseFireRate + "ms");
     }
 
     @Override

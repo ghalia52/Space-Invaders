@@ -3,11 +3,11 @@ package patterns.decorator;
 import utils.Logger;
 import java.awt.Graphics;
 
-
 public abstract class ShipDecorator implements Ship {
     protected Ship decoratedShip;
     protected long appliedTime;
-    protected long duration; // Durée en millisecondes (0 = permanent)
+    protected long duration;
+    private boolean hasExpired = false; // FIX: Track if already expired
 
     public ShipDecorator(Ship ship, long duration) {
         this.decoratedShip = ship;
@@ -49,29 +49,21 @@ public abstract class ShipDecorator implements Ship {
         decoratedShip.setY(y);
     }
 
-    /**
-     * Vérifie si le power-up a expiré
-     */
     protected void checkExpiration() {
-        if (duration > 0) {
+        if (duration > 0 && !hasExpired) { // FIX: Only check if not already expired
             long elapsed = System.currentTimeMillis() - appliedTime;
             if (elapsed >= duration) {
+                hasExpired = true; // FIX: Mark as expired
                 onExpire();
             }
         }
     }
 
-    /**
-     * Appelé quand le power-up expire
-     */
     protected void onExpire() {
         String decoratorName = this.getClass().getSimpleName();
         Logger.log("DECORATOR", decoratorName + " expired");
     }
 
-    /**
-     * Retourne le vaisseau décoré (pour le "unwrapping")
-     */
     public Ship getDecoratedShip() {
         return decoratedShip;
     }

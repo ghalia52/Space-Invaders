@@ -1,14 +1,14 @@
 package patterns.decorator;
 
 import utils.Logger;
+import utils.Constants;
 import java.awt.Graphics;
 
-
 public class RapidFireDecorator extends ShipDecorator {
-    private double fireRateMultiplier = 0.5; // 2x plus rapide
+    private double fireRateMultiplier = 0.5;
 
     public RapidFireDecorator(Ship ship) {
-        super(ship, 7000); // 7 secondes
+        super(ship, Constants.RAPID_FIRE_DURATION);
         Logger.log("DECORATOR", "RapidFire applied - Fire rate x2");
     }
 
@@ -37,6 +37,9 @@ public class RapidFireDecorator extends ShipDecorator {
 
     @Override
     public String getStatus() {
+        if (isExpired()) {
+            return decoratedShip.getStatus();
+        }
         return decoratedShip.getStatus() + " + RapidFire";
     }
 }

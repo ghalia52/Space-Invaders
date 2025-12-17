@@ -7,10 +7,6 @@ import game.Board;
 import utils.Constants;
 import utils.Logger;
 
-/**
- * État du menu principal - SIMPLIFIÉ
- * Point d'entrée de l'application
- */
 public class StateMenu implements State, ActionListener {
     
     private JPanel menuPanel;
@@ -29,7 +25,6 @@ public class StateMenu implements State, ActionListener {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(5, 10, 25),
                     0, getHeight(), new Color(15, 25, 50)
@@ -37,7 +32,6 @@ public class StateMenu implements State, ActionListener {
                 g2d.setPaint(gradient);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
                 
-                // Stars
                 g2d.setColor(new Color(255, 255, 255, 150));
                 java.util.Random random = new java.util.Random(42);
                 for (int i = 0; i < 100; i++) {
@@ -52,19 +46,16 @@ public class StateMenu implements State, ActionListener {
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.PAGE_AXIS));
         menuPanel.setPreferredSize(Constants.SCREEN_SIZE);
         
-        // Add vertical glue to center content
         menuPanel.add(Box.createVerticalGlue());
         
-        // Title
         JLabel titleLabel = new JLabel("SPACE INVADERS");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 72));
-        titleLabel.setForeground(new Color(255, 215, 0)); // Gold color
+        titleLabel.setForeground(new Color(255, 215, 0));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         menuPanel.add(titleLabel);
         
         menuPanel.add(Box.createRigidArea(new Dimension(0, 30)));
         
-        // Subtitle
         JLabel subtitleLabel = new JLabel("Design Patterns Project");
         subtitleLabel.setFont(new Font("Arial", Font.ITALIC, 20));
         subtitleLabel.setForeground(new Color(200, 200, 255));
@@ -73,7 +64,6 @@ public class StateMenu implements State, ActionListener {
         
         menuPanel.add(Box.createRigidArea(new Dimension(0, 80)));
         
-        // Start Game Button
         JButton startButton = createMenuButton("Start Game");
         startButton.setActionCommand("START_GAME");
         startButton.addActionListener(this);
@@ -81,7 +71,6 @@ public class StateMenu implements State, ActionListener {
         
         menuPanel.add(Box.createRigidArea(new Dimension(0, 30)));
         
-        // Instructions
         JPanel instructionsPanel = new JPanel();
         instructionsPanel.setOpaque(false);
         instructionsPanel.setLayout(new BoxLayout(instructionsPanel, BoxLayout.PAGE_AXIS));
@@ -96,12 +85,12 @@ public class StateMenu implements State, ActionListener {
         instructionsPanel.add(Box.createRigidArea(new Dimension(0, 15)));
         
         String[] instructions = {
-            "← → or A D: Move your ship",
+            "Arrow Keys or A D: Move your ship",
             "SPACE: Shoot",
             "ESC: Pause game",
             "",
             "Destroy all aliens to win!",
-            "Don't let them reach Earth!"
+            "Power-ups unlock every 50 points!"
         };
         
         for (String instruction : instructions) {
@@ -113,12 +102,9 @@ public class StateMenu implements State, ActionListener {
         }
         
         menuPanel.add(instructionsPanel);
-        
-        // Add vertical glue to center content
         menuPanel.add(Box.createVerticalGlue());
         
-        // Credits at bottom
-        JLabel creditsLabel = new JLabel("State • Decorator • Composite • Factory Patterns");
+        JLabel creditsLabel = new JLabel("State - Decorator - Composite - Factory Patterns");
         creditsLabel.setFont(new Font("Arial", Font.ITALIC, 14));
         creditsLabel.setForeground(new Color(150, 150, 200));
         creditsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -139,7 +125,6 @@ public class StateMenu implements State, ActionListener {
         button.setBorder(BorderFactory.createLineBorder(new Color(255, 215, 0), 3));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Hover effect
         button.addMouseListener(new MouseAdapter() {
             Color originalColor = button.getBackground();
             
