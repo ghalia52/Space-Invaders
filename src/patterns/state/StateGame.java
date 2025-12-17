@@ -15,11 +15,11 @@ import utils.Constants;
 import utils.Logger;
 
 /**
- * Game State - Complete implementation with all 4 design patterns
- * DECORATOR: Power-ups applied automatically based on score
- * STATE: Manages Menu -> Playing -> Won/Lost transitions
- * COMPOSITE: Manages game object hierarchy via GameScene
- * FACTORY: Creates projectiles via ProjectileFactory
+ * FIXED: Decorators now properly affect gameplay
+ * - SpeedBoost visibly increases movement
+ * - TripleShot fires 3 projectiles
+ * - RapidFire reduces cooldown
+ * - Shield protects from alien bombs (if implemented)
  */
 public class StateGame implements State {
 
@@ -37,10 +37,8 @@ public class StateGame implements State {
     
     private int playerX;
     private int playerY;
-    private int playerSpeed;
     
     private long lastShotTime;
-    private long shotCooldown;
 
     public StateGame(Board board) {
         this.board = board;
@@ -62,9 +60,10 @@ public class StateGame implements State {
         
         gamePanel = new GamePanel();
         
+        // Initialize with BasicShip
         playerShip = new BasicShip(player);
-        updatePlayerStats();
-        Logger.decorator("BasicShip created - Base stats initialized");
+        Logger.decorator("BasicShip created - Speed:" + playerShip.getSpeed() + 
+                        " FireRate:" + playerShip.getFireRate() + "ms");
         
         gameScene = new GameScene();
         Logger.composite("GameScene created (root composite)");
@@ -97,50 +96,56 @@ public class StateGame implements State {
     private void applyRandomPowerUp() {
         int random = (int)(Math.random() * 4);
         
+        String powerUpName = "";
         switch(random) {
             case 0:
                 playerShip = new SpeedBoostDecorator(playerShip);
-                Logger.decorator("SpeedBoost applied! Ship speed increased x2");
+                powerUpName = "SpeedBoost (Speed x2)";
                 break;
             case 1:
                 playerShip = new TripleShotDecorator(playerShip);
-                Logger.decorator("TripleShot applied! Fire power = 3");
+                powerUpName = "TripleShot (3 bullets)";
                 break;
             case 2:
                 playerShip = new RapidFireDecorator(playerShip);
-                Logger.decorator("RapidFire applied! Fire rate x2");
+                powerUpName = "RapidFire (Cooldown x0.5)";
                 break;
             case 3:
                 playerShip = new ShieldDecorator(playerShip);
-                Logger.decorator("Shield applied! Protection active");
+                powerUpName = "Shield (3 hits)";
                 break;
         }
         
-        updatePlayerStats();
+        Logger.decorator(powerUpName + " applied! Current stats: Speed=" + 
+                        playerShip.getSpeed() + " FireRate=" + playerShip.getFireRate());
     }
     
-    private void updatePlayerStats() {
-        playerSpeed = playerShip.getSpeed();
-        shotCooldown = playerShip.getFireRate();
-    }
-    
+    /**
+     * CRITICAL FIX: Directly use decorator values instead of caching
+     */
     private void fireProjectile() {
         long currentTime = System.currentTimeMillis();
         
+        // Get fire rate DIRECTLY from decorator (not cached)
+        long shotCooldown = playerShip.getFireRate();
+        
         if (currentTime - lastShotTime < shotCooldown) {
-            return;
+            return; // Still on cooldown
         }
         
+        // Get fire power DIRECTLY from decorator
         int firePower = playerShip.getFirePower();
         
         if (firePower == 1) {
+            // Normal single shot
             Projectile p = projectileFactory.makeProjectile(
                 Constants.NORMAL_PROJECTILE_ID, playerX, playerY - 20
             );
             projectiles.add(p);
-            Logger.info("FACTORY: Normal shot created");
+            Logger.info("Normal shot fired (FirePower=1)");
             
         } else if (firePower >= 3) {
+            // Triple shot
             Projectile left = projectileFactory.makeProjectile(
                 Constants.NORMAL_PROJECTILE_ID, playerX - 15, playerY - 20
             );
@@ -153,7 +158,7 @@ public class StateGame implements State {
             projectiles.add(left);
             projectiles.add(center);
             projectiles.add(right);
-            Logger.info("FACTORY: Triple shot created (3 projectiles)");
+            Logger.info("Triple shot fired! (FirePower=" + firePower + ")");
         }
         
         lastShotTime = currentTime;
@@ -196,12 +201,10 @@ public class StateGame implements State {
                                 alien.hit();
                                 score += 10;
                                 
-                                Logger.info("Hit! Alien destroyed - Score: " + score);
+                                Logger.info("Hit! Score: " + score + " (Remaining: " + 
+                                           formation.countActiveComponents() + ")");
                                 
-                                int remainingAliens = formation.countActiveComponents();
-                                Logger.composite("Remaining aliens: " + remainingAliens);
-                                
-                                if (remainingAliens == 0) {
+                                if (formation.countActiveComponents() == 0) {
                                     gameWon();
                                     return;
                                 }
@@ -249,7 +252,6 @@ public class StateGame implements State {
         
         if (gamePanel != null && gamePanel.updateTimer != null) {
             gamePanel.updateTimer.stop();
-            Logger.info("Game loop stopped");
         }
         
         board.setCurrentState(new StateWon(board, score));
@@ -261,7 +263,6 @@ public class StateGame implements State {
         
         if (gamePanel != null && gamePanel.updateTimer != null) {
             gamePanel.updateTimer.stop();
-            Logger.info("Game loop stopped");
         }
         
         board.setCurrentState(new StateLost(board, score));
@@ -276,12 +277,7 @@ public class StateGame implements State {
     public void onEnter() {
         State.super.onEnter();
         Logger.state("STATE: Entering PLAYING state");
-        Logger.info("Controls: LEFT/RIGHT (or A D) = Move | SPACE = Shoot | ESC = Pause");
-        Logger.info("All 4 Design Patterns Active:");
-        Logger.info("   STATE: Managing game flow");
-        Logger.info("   DECORATOR: Power-ups every 50 points");
-        Logger.info("   COMPOSITE: 55 aliens in formation");
-        Logger.info("   FACTORY: Creating projectiles");
+        Logger.info("Controls: LEFT/RIGHT = Move | SPACE = Shoot | ESC = Pause");
         
         SwingUtilities.invokeLater(() -> {
             if (gamePanel != null) {
@@ -333,27 +329,38 @@ public class StateGame implements State {
             });
         }
         
+        /**
+         * CRITICAL FIX: Get speed directly from decorator each time
+         */
         private void handleKeyPress(int keyCode) {
             switch(keyCode) {
                 case KeyEvent.VK_LEFT:
                 case KeyEvent.VK_A:
                     if (!isPaused) {
-                        playerX -= playerSpeed;
+                        // Get speed DIRECTLY from decorator
+                        int speed = playerShip.getSpeed();
+                        playerX -= speed;
                         if (playerX < 30) playerX = 30;
+                        
+                        Logger.info("Move LEFT - Speed: " + speed + " NewX: " + playerX);
                     }
                     break;
                     
                 case KeyEvent.VK_RIGHT:
                 case KeyEvent.VK_D:
                     if (!isPaused) {
-                        playerX += playerSpeed;
+                        // Get speed DIRECTLY from decorator
+                        int speed = playerShip.getSpeed();
+                        playerX += speed;
                         if (playerX > 770) playerX = 770;
+                        
+                        Logger.info("Move RIGHT - Speed: " + speed + " NewX: " + playerX);
                     }
                     break;
                     
                 case KeyEvent.VK_SPACE:
                     if (!isPaused) {
-                        fireProjectile();
+                        fireProjectile(); // Uses decorator fire rate
                     }
                     break;
                     
@@ -382,8 +389,7 @@ public class StateGame implements State {
                         gameScene.update();
                         updateProjectiles();
                         checkCollisions();
-                        playerShip.update();
-                        updatePlayerStats();
+                        playerShip.update(); // Updates decorators
                         repaint();
                     }
                 }
@@ -461,13 +467,7 @@ public class StateGame implements State {
             g2d.setColor(new Color(255, 255, 100));
             g2d.fillOval(playerX - 8, playerY - 5, 16, 16);
             
-            g2d.setColor(new Color(255, 255, 255, 180));
-            g2d.fillOval(playerX - 5, playerY - 2, 6, 6);
-            
-            g2d.setColor(new Color(255, 100, 0, 100));
-            g2d.fillOval(playerX - 20, playerY + 15, 10, 10);
-            g2d.fillOval(playerX + 10, playerY + 15, 10, 10);
-            
+            // Shield visual effect
             if (playerShip.hasShield()) {
                 g2d.setColor(new Color(0, 150, 255, 100));
                 g2d.fillOval(playerX - 35, playerY - 30, 70, 70);
@@ -485,23 +485,23 @@ public class StateGame implements State {
             int aliensRemaining = alienFormation.countActiveComponents();
             g2d.drawString("ALIENS: " + aliensRemaining, 20, 80);
             
+            // Show current decorator status
             g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
             g2d.setColor(new Color(255, 215, 0));
             String status = playerShip.getStatus();
             if (!status.equals("BasicShip")) {
-                g2d.drawString("POWER-UP: " + status, 20, 115);
+                g2d.drawString("STATUS: " + status, 20, 115);
             }
             
-            int nextPowerUp = lastPowerUpScore + 50;
+            // Show actual stats
             g2d.setColor(new Color(150, 255, 150));
-            g2d.drawString("Next Power-Up: " + nextPowerUp, 20, 140);
+            g2d.drawString("Speed: " + playerShip.getSpeed() + 
+                          " | FireRate: " + playerShip.getFireRate() + "ms" +
+                          " | FirePower: " + playerShip.getFirePower(), 20, 140);
             
-            g2d.setFont(new Font("Arial", Font.PLAIN, 14));
-            g2d.setColor(new Color(255, 255, 150, 200));
-            String controls = "LEFT/RIGHT or A D: Move  |  SPACE: Shoot  |  ESC: Pause  |  Power-ups every 50 pts!";
-            FontMetrics fm = g2d.getFontMetrics();
-            int controlsWidth = fm.stringWidth(controls);
-            g2d.drawString(controls, (getWidth() - controlsWidth) / 2, getHeight() - 15);
+            // Next power-up indicator
+            int nextPowerUp = lastPowerUpScore + 50;
+            g2d.drawString("Next Power-Up: " + nextPowerUp + " pts", 20, 165);
         }
         
         private void drawPauseOverlay(Graphics2D g2d) {
@@ -513,13 +513,7 @@ public class StateGame implements State {
             String pauseText = "PAUSED";
             FontMetrics fm = g2d.getFontMetrics();
             int textWidth = fm.stringWidth(pauseText);
-            g2d.drawString(pauseText, (getWidth() - textWidth) / 2, getHeight() / 2 - 20);
-            
-            g2d.setFont(new Font("Arial", Font.PLAIN, 24));
-            g2d.setColor(Color.WHITE);
-            String resumeText = "Press ESC to Resume";
-            textWidth = g2d.getFontMetrics().stringWidth(resumeText);
-            g2d.drawString(resumeText, (getWidth() - textWidth) / 2, getHeight() / 2 + 40);
+            g2d.drawString(pauseText, (getWidth() - textWidth) / 2, getHeight() / 2);
         }
     }
 }
